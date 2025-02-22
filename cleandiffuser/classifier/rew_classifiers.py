@@ -14,6 +14,7 @@ class CumRewClassifier(BaseClassifier):
         super().__init__(nn_classifier, 0.995, None, optim_params, device)
 
     def loss(self, x, noise, R):
+        # x = x.view(x.shape[0], -1)
         pred_R = self.model(x, noise, None)
         return ((pred_R - R) ** 2).mean()
 
@@ -26,4 +27,5 @@ class CumRewClassifier(BaseClassifier):
         return {"loss": loss.item()}
 
     def logp(self, x, noise, c=None):
+        # x = x.view(x.shape[0], -1)
         return self.model_ema(x, noise)
