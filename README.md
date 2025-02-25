@@ -29,9 +29,9 @@
 **CleanDiffuser** is an easy-to-use modularized Diffusion Model library tailored for decision-making, which comprehensively integrates different types of diffusion algorithmic branches. CleanDiffuser offers a variety of advanced *diffusion models*, *network structures*, diverse *conditions*, and *algorithm pipelines* in a simple and user-friendly manner. Inheriting the design philosophy of [CleanRL](https://github.com/vwxyzjn/cleanrl) and [Diffusers](https://github.com/huggingface/diffusers), CleanDiffuser emphasizes **usability, simplicity, and customizability**. We hope that CleanDiffuser will serve as a foundational tool library, providing long-term support for Diffusion Model research in the decision-making community, facilitating the application of research for scientists and practitioners alike. The highlight features of CleanDiffuser are:
 
 - 🚀 Amazing features specially tailored for decision-making tasks
-- 🍧 Support for multiple advanced diffusion models and network architectures
+- 🍧 Support for multiple advanced diffusion models and network architectures 
 - 🧩 Build decoupled modules into integrated pipelines easily like building blocks
-- 📈 Wandb logging and Hydra configuration
+- 📈 Wandb logging and Hydra configuration 
 - 🌏 Unified environmental interface and efficient dataloader
 
 We strongly recommend reading [papers](https://arxiv.org/abs/2406.09509) and [documents](https://cleandiffuserteam.github.io/CleanDiffuserDocs/) to learn more about CleanDiffuser and its design philosophy.
@@ -44,7 +44,7 @@ We strongly recommend reading [papers](https://arxiv.org/abs/2406.09509) and [do
 
 <!-- NEWS -->
 ## 🔥 News and Change Log
-
+- [**2025-02-15**] 🥳 We have added a diffusion planner based on empirical studies using CleanDiffuser, [Diffusion Veteran](https://openreview.net/forum?id=7BQkXXM8Fy).
 - [**2024-09-26**] 🎁 Our paper [CleanDiffuser](https://arxiv.org/abs/2406.09509), has been accepted by **NeurIPS 2024 Datasets and Benchmark Track**!
 - [**2024-08-27**] 🥳 We have added a lightning-fast diffusion planner, [DiffuserLite](https://arxiv.org/pdf/2401.15443), and two popular diffusion policies, [SfBC](https://arxiv.org/abs/2209.14548) and [QGPO](https://arxiv.org/abs/2304.12824), to the pipeline. Additionally, we have updated some unit tests and [API documentation](https://cleandiffuserteam.github.io/CleanDiffuserDocs/).
 - [**2024-07-03**] 💫 We provided a CleanDiffuser-based replication of ACT ([action chunking with transformers](https://arxiv.org/abs/2304.13705)) in the [act branch](https://github.com/CleanDiffuserTeam/CleanDiffuser/tree/act).
@@ -217,6 +217,7 @@ python pipelines/diffuser_d4rl_mujoco.py mode=inference ckpt=latest
 |                             | Decision Diffuser        | ✅[Is Conditional Generative Modeling all you need for Decision-Making?](https://arxiv.org/abs/2211.15657)                        |
 |                             | AdaptDiffuser            | ✅[AdaptDiffuser: Diffusion Models as Adaptive Self-evolving Planners](https://arxiv.org/abs/2302.01877)                          |
 |                             | DiffuserLite (*New!*)🔥  | ✅[DiffuserLite: Towards Real-time Diffusion Planning](https://arxiv.org/abs/2401.15443)                                          |
+|                             | Diffusion Veteran (*New!*)🔥  | ✅[What Makes a Good Diffusion Planner for Decision Making?](https://openreview.net/forum?id=7BQkXXM8Fy)                                          |
 | *Policies*                  | DQL                      | ✅[Diffusion Policies as an Expressive Policy Class for Offline Reinforcement Learning](https://arxiv.org/abs/2208.06193)         | 
 |                             | EDP                      | ✅[Efficient Diffusion Policies for Offline Reinforcement Learning](https://arxiv.org/abs/2305.20081)                             | 
 |                             | IDQL                     | ✅[IDQL: Implicit Q-Learning as an Actor-Critic Method with Diffusion Policies](https://arxiv.org/abs/2304.10573)                 |
