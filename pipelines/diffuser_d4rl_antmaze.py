@@ -7,7 +7,8 @@ import numpy as np
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-
+import datetime
+from tqdm import tqdm
 from cleandiffuser.classifier import CumRewClassifier
 from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset
 from cleandiffuser.dataset.dataset_utils import loop_dataloader
@@ -23,9 +24,11 @@ def pipeline(args):
 
     set_seed(args.seed)
 
-    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
+    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}/'
     if os.path.exists(save_path) is False:
         os.makedirs(save_path)
+    log_file_path = os.path.join(save_path, 'log.txt')
+    open(log_file_path, 'w').close()
 
     # ---------------------- Create Dataset ----------------------
     env = gym.make(args.task.env_name)
@@ -35,6 +38,7 @@ def pipeline(args):
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True)
     obs_dim, act_dim = dataset.o_dim, dataset.a_dim
+    print("dataset size:", len(dataset), ", batch size:", args.batch_size, ", obs_dim:", obs_dim, ", act_dim:", act_dim)
 
     # --------------- Network Architecture -----------------
     nn_diffusion = JannerUNet1d(
@@ -77,7 +81,11 @@ def pipeline(args):
         n_gradient_step = 0
         log = {"avg_loss_diffusion": 0., "avg_loss_classifier": 0.}
 
-        for batch in loop_dataloader(dataloader):
+        pbar = tqdm(loop_dataloader(dataloader), 
+                             total=args.diffusion_gradient_steps,
+                             desc="Training Diffusion")
+        
+        for batch in pbar:
 
             obs = batch["obs"]["state"].to(args.device)
             act = batch["act"].to(args.device)
@@ -97,7 +105,9 @@ def pipeline(args):
                 log["gradient_steps"] = n_gradient_step + 1
                 log["avg_loss_diffusion"] /= args.log_interval
                 log["avg_loss_classifier"] /= args.log_interval
-                print(log)
+                print(f'{datetime.datetime.now()}, {log}')
+                with open(log_file_path, 'a') as f:
+                    f.write(f'{datetime.datetime.now()}, {log}\n')
                 log = {"avg_loss_diffusion": 0., "avg_loss_classifier": 0.}
 
             # ----------- Saving ------------
@@ -114,6 +124,7 @@ def pipeline(args):
     # ---------------------- Inference ----------------------
     elif args.mode == "inference":
 
+        save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
         agent.load(save_path + f"diffusion_ckpt_{args.ckpt}.pt")
         agent.classifier.load(save_path + f"classifier_ckpt_{args.ckpt}.pt")
 
@@ -154,9 +165,10 @@ def pipeline(args):
                 t += 1
                 cum_done = done if cum_done is None else np.logical_or(cum_done, done)
                 ep_reward += rew
-                print(f'[t={t}] xy: {obs[:, :2]}')
-                print(f'[t={t}] cum_rew: {ep_reward}, '
-                      f'logp: {logp[idx, torch.arange(args.num_envs)]}')
+                if t % 50 == 0: 
+                    print(f'[t={t}] xy: {obs[:, :2]}')
+                    print(f'[t={t}] cum_rew: {ep_reward}, '
+                          f'logp: {logp[idx, torch.arange(args.num_envs)]}', f'time: {datetime.datetime.now()}')
 
             # clip the reward to [0, 1] since the max cumulative reward is 1
             episode_rewards.append(np.clip(ep_reward, 0., 1.))

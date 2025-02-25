@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
+from tqdm import tqdm
+import datetime
 
 from cleandiffuser.classifier import CumRewClassifier
 from cleandiffuser.dataset.d4rl_mujoco_dataset import D4RLMuJoCoDataset
@@ -26,6 +28,8 @@ def pipeline(args):
     save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
     if os.path.exists(save_path) is False:
         os.makedirs(save_path)
+    log_file_path = os.path.join(save_path, 'log.txt')
+    open(log_file_path, 'w').close()
 
     # ---------------------- Create Dataset ----------------------
     env = gym.make(args.task.env_name)
@@ -75,8 +79,11 @@ def pipeline(args):
 
         n_gradient_step = 0
         log = {"avg_loss_diffusion": 0., "avg_loss_classifier": 0.}
-
-        for batch in loop_dataloader(dataloader):
+        pbar = tqdm(loop_dataloader(dataloader), 
+                             total=args.diffusion_gradient_steps,
+                             desc="Training Diffusion")
+        
+        for batch in pbar:
 
             obs = batch["obs"]["state"].to(args.device)
             act = batch["act"].to(args.device)
@@ -96,7 +103,9 @@ def pipeline(args):
                 log["gradient_steps"] = n_gradient_step + 1
                 log["avg_loss_diffusion"] /= args.log_interval
                 log["avg_loss_classifier"] /= args.log_interval
-                print(log)
+                print(f'{datetime.datetime.now()}, {log}')
+                with open(log_file_path, 'a') as f:
+                    f.write(f'{datetime.datetime.now()}, {log}\n')
                 log = {"avg_loss_diffusion": 0., "avg_loss_classifier": 0.}
 
             # ----------- Saving ------------
@@ -153,8 +162,10 @@ def pipeline(args):
                 t += 1
                 cum_done = done if cum_done is None else np.logical_or(cum_done, done)
                 ep_reward += (rew * (1 - cum_done)) if t < 1000 else rew
-                print(f'[t={t}] rew: {np.around((rew * (1 - cum_done)), 2)}, '
-                      f'logp: {logp[idx, torch.arange(args.num_envs)]}')
+                
+                if t % 20 == 0:
+                    print(f'[t={t}] rew: {np.around((rew * (1 - cum_done)), 2)}, '
+                          f'logp: {logp[idx, torch.arange(args.num_envs)]}')
 
             episode_rewards.append(ep_reward)
 

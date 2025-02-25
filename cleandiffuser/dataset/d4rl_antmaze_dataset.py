@@ -53,6 +53,7 @@ class D4RLAntmazeDataset(BaseDataset):
             max_path_length: int = 1001,
             noreaching_penalty: float = -100.,
             discount: float = 0.99,
+            succ_only: bool = False,
     ):
         super().__init__()
 
@@ -106,25 +107,31 @@ class D4RLAntmazeDataset(BaseDataset):
                     self.seq_obs.append(_seq_obs)
                     self.seq_act.append(_seq_act)
                     self.seq_rew.append(_seq_rew)
+                    
+                    max_start = min(self.path_lengths[-1] - 1, max_path_length - horizon)
+                    self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
+                    path_idx += 1
 
                 # 2. agent never reaches the goal during the episode
                 elif path_length == max_path_length:
+                    if succ_only:
+                        pass
+                    else:
+                        self.seq_obs.append(normed_observations[ptr:i])
+                        self.seq_act.append(actions[ptr:i])
+                        self.seq_rew.append(rewards[ptr:i][:, None])
 
-                    self.seq_obs.append(normed_observations[ptr:i])
-                    self.seq_act.append(actions[ptr:i])
-                    self.seq_rew.append(rewards[ptr:i][:, None])
-
-                    # panelty for not reaching the goal
-                    self.seq_rew[-1][-1] = noreaching_penalty
+                        # panelty for not reaching the goal
+                        self.seq_rew[-1][-1] = noreaching_penalty
+                        
+                        max_start = min(self.path_lengths[-1] - 1, max_path_length - horizon)
+                        self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
+                        path_idx += 1
 
                 else:
                     raise ValueError(f"path_length: {path_length} > max_path_length: {max_path_length}")
-
-                max_start = min(self.path_lengths[-1] - 1, max_path_length - horizon)
-                self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
-
+                
                 ptr = i
-                path_idx += 1
 
         self.seq_obs = np.array(self.seq_obs)
         self.seq_act = np.array(self.seq_act)
