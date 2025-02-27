@@ -84,12 +84,12 @@ def pipeline(args):
 
     # ---------------------- Inference ----------------------
 
-    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
-    agent.load(save_path + f"diffusion_ckpt_{args.ckpt}.pt")
-    agent.classifier.load(save_path + f"rnd_classifier/classifier_ckpt_{args.ckpt}.pt")
-    target_net_ckpt=torch.load(save_path + f"rnd_classifier/rnd_classifier_target.pt")
+    ckpt_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
+    agent.load(ckpt_path + f"diffusion_ckpt_{args.ckpt}.pt")
+    agent.classifier.load(ckpt_path + f"rnd_classifier/classifier_ckpt_{args.ckpt}.pt")
+    target_net_ckpt=torch.load(ckpt_path + f"rnd_classifier/rnd_classifier_target.pt")
     nn_classifier_target.load_state_dict(target_net_ckpt)
-    reward_net_ckpt=torch.load(save_path + f"classifier_ckpt_{args.ckpt}.pt")
+    reward_net_ckpt=torch.load(ckpt_path + f"classifier_ckpt_{args.ckpt}.pt")
     nn_reward_classifier.load_state_dict(reward_net_ckpt["model_ema"])
     
     nn_classifier_target.eval()
@@ -103,9 +103,13 @@ def pipeline(args):
     prior = torch.zeros((args.num_envs, args.task.horizon, obs_dim + act_dim), device=args.device)
     for i in range(args.num_episodes):
 
+        obs_list = []
+        act_list = []
+        
         obs, ep_reward, cum_done, t = env_eval.reset(), 0., 0., 0
 
         while not np.all(cum_done) and t < 1000 + 1:
+            obs_list.append(obs)
             # normalize obs
             obs = torch.tensor(normalizer.normalize(obs), device=args.device, dtype=torch.float32)
 
@@ -125,6 +129,7 @@ def pipeline(args):
                     idx, torch.arange(args.num_envs), 0, obs_dim:]
             act = act.clip(-1., 1.).cpu().numpy()
 
+            act_list.append(act)
             # step
             obs, rew, done, info = env_eval.step(act)
 
@@ -141,6 +146,10 @@ def pipeline(args):
 
         # clip the reward to [0, 1] since the max cumulative reward is 1
         episode_rewards.append(np.clip(ep_reward, 0., 1.))
+        obs_array = np.stack(obs_list).transpose(1, 0, 2)
+        act_array = np.stack(act_list).transpose(1, 0, 2)
+        np.save(save_path + f"episode_{i}_obs.npy", obs_array)
+        np.save(save_path + f"episode_{i}_act.npy", act_array)
 
     episode_rewards = [list(map(lambda x: env.get_normalized_score(x), r)) for r in episode_rewards]
     episode_rewards = np.array(episode_rewards)

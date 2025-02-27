@@ -77,6 +77,7 @@ class D4RLMuJoCoDataset(BaseDataset):
             horizon: int = 1,
             max_path_length: int = 1000,
             discount: float = 0.99,
+            succ_only: bool = False,
     ):
         super().__init__()
 
@@ -100,6 +101,18 @@ class D4RLMuJoCoDataset(BaseDataset):
         self.seq_val = np.zeros((n_paths, max_path_length, 1), dtype=np.float32)
         self.tml_and_not_timeout = []
         self.indices = []
+        
+        traj_total_rewards = []
+        ptr = 0
+        for i in range(timeouts.shape[0]):
+            if timeouts[i] or terminals[i]:
+                if terminals[i] and not timeouts[i]:
+                    rewards[i] = terminal_penalty if terminal_penalty is not None else rewards[i]
+                    
+                traj_total_rewards.append(np.sum(rewards[ptr:i + 1][:, None]))
+                ptr = i + 1
+        reward_mid = np.median(traj_total_rewards)
+        print(f"reward_mid: {reward_mid}")
 
         path_lengths, ptr = [], 0
         path_idx = 0
@@ -116,7 +129,11 @@ class D4RLMuJoCoDataset(BaseDataset):
                 self.seq_rew[path_idx, :i - ptr + 1] = rewards[ptr:i + 1][:, None]
 
                 max_start = min(path_lengths[-1] - 1, max_path_length - horizon)
-                self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
+                if succ_only:
+                    if traj_total_rewards[path_idx] >= reward_mid:
+                        self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
+                else:
+                    self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
 
                 ptr = i + 1
                 path_idx += 1

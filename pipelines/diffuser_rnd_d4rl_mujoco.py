@@ -33,7 +33,7 @@ def pipeline(args):
     # ---------------------- Create Dataset ----------------------
     env = gym.make(args.task.env_name)
     dataset = D4RLMuJoCoDataset(
-        env.get_dataset(), horizon=args.task.horizon, terminal_penalty=args.terminal_penalty, discount=args.discount)
+        env.get_dataset(), horizon=args.task.horizon, terminal_penalty=args.terminal_penalty, discount=args.discount, succ_only=True)
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True)
     obs_dim, act_dim = dataset.o_dim, dataset.a_dim
