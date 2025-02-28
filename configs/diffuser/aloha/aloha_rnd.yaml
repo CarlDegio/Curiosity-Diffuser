@@ -32,7 +32,7 @@ save_interval_classifier: 30000
 ckpt: latest
 num_envs: 1
 num_episodes: 1
-num_candidates: 64
+num_candidates: 16
 temperature: 0.5
 use_ema: True
 
