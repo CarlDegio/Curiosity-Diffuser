@@ -104,7 +104,7 @@ def pipeline(args):
         obs = env.reset()
 
         action_run = 10
-        
+        t=0
         while t*action_run < 1000:
             start_time = time.time()
             with torch.no_grad():
@@ -137,7 +137,7 @@ def pipeline(args):
             idx = logp.argmax(0)
             act_seq = traj.view(args.num_candidates, args.num_envs, args.task.horizon, -1)[
                     idx, torch.arange(args.num_envs), :, obs_dim:]  # 尺寸不确定，可能得试试
-            # act = act.clip(-1., 1.).cpu().numpy()
+            act_seq = act_seq.cpu().numpy()
 
             # act_list.append(act)
             # step
