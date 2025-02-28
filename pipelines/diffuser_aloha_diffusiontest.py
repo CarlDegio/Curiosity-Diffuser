@@ -103,7 +103,9 @@ def pipeline(args):
         
         obs = env.reset()
 
-        while t < 1000:
+        action_run = 10
+        
+        while t*action_run < 1000:
             start_time = time.time()
             with torch.no_grad():
                 qpos, cam_high, cam_left_wrist = obs  # RGB格式的图像
@@ -139,7 +141,7 @@ def pipeline(args):
 
             # act_list.append(act)
             # step
-            for tick in range(10): # 执行10个动作，共0.1s，再推理
+            for tick in range(action_run): # 执行10个动作，共0.1s，再推理
                 obs = env.step(act_seq[tick])
             
             
