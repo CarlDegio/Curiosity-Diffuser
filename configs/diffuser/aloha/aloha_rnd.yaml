@@ -1,0 +1,43 @@
+defaults:
+  - _self_
+  - task: stack
+
+pipeline_name: diffuser_aloha_rnd
+mode: train
+seed: 0
+device: cuda:0
+
+# Environment
+noreaching_penalty: -100
+discount: 0.99
+
+# Diffuser
+solver: ddpm
+model_dim: 64
+diffusion_steps: 20
+sampling_steps: 20
+predict_noise: False
+action_loss_weight: 10.
+ema_rate: 0.9999
+
+# Training
+diffusion_gradient_steps: 5
+classifier_gradient_steps: 300000
+batch_size: 512
+log_interval: 3000
+save_interval_diffusion: 50000
+save_interval_classifier: 30000
+
+# Inference
+ckpt: latest
+num_envs: 1
+num_episodes: 1
+num_candidates: 64
+temperature: 0.5
+use_ema: True
+
+# hydra
+hydra:
+  job:
+    chdir: false
+
