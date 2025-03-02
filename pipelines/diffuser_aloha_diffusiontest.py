@@ -1,18 +1,13 @@
 import os
 
-import d4rl
 import gym
 import hydra
 import numpy as np
 import torch
-from torch.optim.lr_scheduler import CosineAnnealingLR
-from torch.utils.data import DataLoader
 import datetime
-from cleandiffuser.classifier import CumRewClassifier, RNDClassifier
-from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset
-from cleandiffuser.dataset.dataset_utils import loop_dataloader
+from cleandiffuser.classifier import RNDClassifier
 from cleandiffuser.diffusion import DiscreteDiffusionSDE
-from cleandiffuser.nn_classifier import HalfJannerUNet1d, MLPNNClassifier
+from cleandiffuser.nn_classifier import HalfJannerUNet1d
 from cleandiffuser.nn_diffusion import JannerUNet1d
 from cleandiffuser.utils import report_parameters
 from utils import set_seed
@@ -37,18 +32,18 @@ def pipeline(args):
     # --------------- Network Architecture -----------------
     nn_diffusion = JannerUNet1d(
         obs_dim + act_dim, model_dim=args.model_dim, emb_dim=args.model_dim, dim_mult=args.task.dim_mult,
-        timestep_emb_type="positional", attention=False, kernel_size=5)
+        timestep_emb_type="positional", attention=True, kernel_size=5)
     nn_reward_classifier = HalfJannerUNet1d(
         args.task.horizon, obs_dim + act_dim, out_dim=1,
         model_dim=args.model_dim, emb_dim=args.model_dim, dim_mult=args.task.dim_mult,
         timestep_emb_type="positional", kernel_size=3)
     nn_rnd_classifier = HalfJannerUNet1d(
         args.task.horizon, obs_dim + act_dim, out_dim=64,
-        model_dim=args.model_dim, emb_dim=args.model_dim, dim_mult=args.task.dim_mult,
+        model_dim=args.model_dim//2, emb_dim=args.model_dim//4, dim_mult=(1,4),
         timestep_emb_type="positional", kernel_size=3)
     nn_classifier_target = HalfJannerUNet1d(
         args.task.horizon, obs_dim + act_dim, out_dim=64,
-        model_dim=args.model_dim//2, emb_dim=args.model_dim, dim_mult=(1,2),
+        model_dim=args.model_dim//4, emb_dim=args.model_dim//2, dim_mult=(1,2),
         timestep_emb_type="positional", kernel_size=3)
     nn_classifier_target.eval()
     # nn_classifier = MLPNNClassifier(

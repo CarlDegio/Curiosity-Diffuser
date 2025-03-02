@@ -14,19 +14,19 @@ discount: 0.99
 # Diffuser
 solver: ddpm
 model_dim: 64
-diffusion_steps: 20
-sampling_steps: 20
+diffusion_steps: 128
+sampling_steps: 128
 predict_noise: False
 action_loss_weight: 10.
 ema_rate: 0.9999
 
 # Training
-diffusion_gradient_steps: 5
-classifier_gradient_steps: 300000
+diffusion_gradient_steps: 500000
+classifier_gradient_steps: 500000
 batch_size: 512
 log_interval: 3000
-save_interval_diffusion: 50000
-save_interval_classifier: 30000
+save_interval_diffusion: 100000
+save_interval_classifier: 100000
 
 # Inference
 ckpt: latest
