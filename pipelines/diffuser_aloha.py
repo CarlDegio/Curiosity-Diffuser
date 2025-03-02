@@ -54,7 +54,7 @@ def pipeline(args):
     print(f"==============================================================================")
 
     # --------------- Classifier Guidance --------------------
-    classifier = CumRewClassifier(nn_classifier, device=args.device, optim_params = {"lr": 1e-3})
+    classifier = CumRewClassifier(nn_classifier, device=args.device, optim_params = {"lr": 2e-4})
 
     # ----------------- Masking -------------------
     fix_mask = torch.zeros((args.task.horizon, obs_dim + act_dim))
@@ -67,7 +67,7 @@ def pipeline(args):
         nn_diffusion, None,
         fix_mask=fix_mask, loss_weight=loss_weight, classifier=classifier, ema_rate=args.ema_rate,
         device=args.device, diffusion_steps=args.diffusion_steps, predict_noise=args.predict_noise,
-        optim_params = {"lr": 1e-3})
+        optim_params = {"lr": 2e-4})
 
     # ---------------------- Training ----------------------
     if args.mode == "train":
@@ -95,7 +95,8 @@ def pipeline(args):
             log["avg_loss_diffusion"] += agent.update(x)['loss']
             diffusion_lr_scheduler.step()
             if n_gradient_step <= args.classifier_gradient_steps:
-                log["avg_loss_classifier"] += agent.update_classifier(x, val)['loss']
+                # log["avg_loss_classifier"] += agent.update_classifier(x, val)['loss']
+                log["avg_loss_classifier"] += 0.0
                 classifier_lr_scheduler.step()
 
             # ----------- Logging ------------

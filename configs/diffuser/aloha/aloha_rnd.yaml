@@ -14,8 +14,8 @@ discount: 0.99
 # Diffuser
 solver: ddpm
 model_dim: 64
-diffusion_steps: 20
-sampling_steps: 20
+diffusion_steps: 128
+sampling_steps: 128
 predict_noise: False
 action_loss_weight: 10.
 ema_rate: 0.9999
@@ -32,7 +32,7 @@ save_interval_classifier: 100000
 ckpt: latest
 num_envs: 1
 num_episodes: 1
-num_candidates: 64
+num_candidates: 16
 temperature: 0.5
 use_ema: True
 
