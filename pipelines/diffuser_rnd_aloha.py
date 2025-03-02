@@ -60,7 +60,7 @@ def pipeline(args):
     print(f"==============================================================================")
 
     # --------------- Classifier Guidance --------------------
-    classifier = RNDClassifier(nn_classifier, nn_classifier_target, device=args.device, optim_params = {"lr": 1e-3})
+    classifier = RNDClassifier(nn_classifier, nn_classifier_target, device=args.device)
 
     # ----------------- Masking -------------------
     fix_mask = torch.zeros((args.task.horizon, obs_dim + act_dim))
@@ -72,8 +72,7 @@ def pipeline(args):
     agent = DiscreteDiffusionSDE(
         nn_diffusion, None,
         fix_mask=fix_mask, loss_weight=loss_weight, classifier=classifier, ema_rate=args.ema_rate,
-        device=args.device, diffusion_steps=args.diffusion_steps, predict_noise=args.predict_noise,
-        optim_params = {"lr": 1e-3})
+        device=args.device, diffusion_steps=args.diffusion_steps, predict_noise=args.predict_noise)
 
     # ---------------------- Training ----------------------
     if args.mode == "train":
