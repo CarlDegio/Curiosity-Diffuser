@@ -8,9 +8,19 @@ import numpy as np  # 添加numpy用于数组操作
 @hydra.main(config_path="../configs/diffuser/antmaze", config_name="antmaze_rnd", version_base=None)
 def pipeline(args):
     set_seed(1)
-    env = gym.make(args.task.env_name)
-    obs = env.reset()
+    RESET = R = 'r'  # Reset position.
+    GOAL = G = 'g'  
+    BIG_MAZE_TEST = [[1, 1, 1, 1, 1, 1, 1, 1],
+                [1, R, 0, 1, 1, 0, 0, 1],
+                [1, 0, 0, 1, 0, 0, 0, 1],
+                [1, 1, 0, 0, 0, 1, 1, 1],
+                [1, 0, 0, 1, 0, 0, 0, 1],
+                [1, 0, 1, 0, 0, 1, 0, 1],
+                [1, 0, 0, 0, 1, 0, G, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1]]
     
+    env = gym.make("antmaze-large-play-v2")
+    obs = env.reset()
 
     # 重置环境
     
