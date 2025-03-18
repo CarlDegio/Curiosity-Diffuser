@@ -8,48 +8,30 @@
 *** Thanks again! Now go create something AMAZING! :D
 -->
 
-<p align="center">
+<!-- <p align="center">
     <br>
     <img src="assets/github_logo.jpg" width="300"/>
     <br>
-<p>
+<p> -->
 
-# CleanDiffuser: An Easy-to-use Modularized Library for Diffusion Models in Decision Making
+# Curiosity-Diffuser: Curiosity Guide Diffusion Models for Reliability
 
 <p align="center">
 ·
 <a href="https://arxiv.org/abs/2406.09509">ArXiv</a>
 ·
-<a href="assets/CleanDiffuser.pdf">Paper</a>
-·
 <a href="https://cleandiffuserteam.github.io/CleanDiffuserDocs/">Documentation</a>
 ·
 </p>
 
-**CleanDiffuser** is an easy-to-use modularized Diffusion Model library tailored for decision-making, which comprehensively integrates different types of diffusion algorithmic branches. CleanDiffuser offers a variety of advanced *diffusion models*, *network structures*, diverse *conditions*, and *algorithm pipelines* in a simple and user-friendly manner. Inheriting the design philosophy of [CleanRL](https://github.com/vwxyzjn/cleanrl) and [Diffusers](https://github.com/huggingface/diffusers), CleanDiffuser emphasizes **usability, simplicity, and customizability**. We hope that CleanDiffuser will serve as a foundational tool library, providing long-term support for Diffusion Model research in the decision-making community, facilitating the application of research for scientists and practitioners alike. The highlight features of CleanDiffuser are:
+Curiosity-Diffuser is an novel guided diffusion model with anti-curiosity for decision making, thereby improving the reliability of the policy. The core idea is to use a Random Network Distillation (RND) curiosity module to assess whether the model's behavior aligns with the training data, and then minimize curiosity by classifier guidance diffusion to reduce overgeneralization during inference. Additionally, we propose a computationally efficient metric for evaluating the reliability of the policy, measuring the similarity between the generated behaviors and the training dataset, to facilitate research about reliability learning.
 
-- 🚀 Amazing features specially tailored for decision-making tasks
-- 🍧 Support for multiple advanced diffusion models and network architectures 
-- 🧩 Build decoupled modules into integrated pipelines easily like building blocks
-- 📈 Wandb logging and Hydra configuration 
-- 🌏 Unified environmental interface and efficient dataloader
-
-We strongly recommend reading [papers](https://arxiv.org/abs/2406.09509) and [documents](https://cleandiffuserteam.github.io/CleanDiffuserDocs/) to learn more about CleanDiffuser and its design philosophy.
 
 <p align="center">
     <br>
-    <img src="assets/framework.png" width="700"/>
+    <img src="assets/main.png" width="700"/>
     <br>
 <p>
-
-<!-- NEWS -->
-## 🔥 News and Change Log
-- [**2025-02-15**] 🥳 We have added a diffusion planner based on empirical studies using CleanDiffuser, [Diffusion Veteran](https://openreview.net/forum?id=7BQkXXM8Fy).
-- [**2024-09-26**] 🎁 Our paper [CleanDiffuser](https://arxiv.org/abs/2406.09509), has been accepted by **NeurIPS 2024 Datasets and Benchmark Track**!
-- [**2024-08-27**] 🥳 We have added a lightning-fast diffusion planner, [DiffuserLite](https://arxiv.org/pdf/2401.15443), and two popular diffusion policies, [SfBC](https://arxiv.org/abs/2209.14548) and [QGPO](https://arxiv.org/abs/2304.12824), to the pipeline. Additionally, we have updated some unit tests and [API documentation](https://cleandiffuserteam.github.io/CleanDiffuserDocs/).
-- [**2024-07-03**] 💫 We provided a CleanDiffuser-based replication of ACT ([action chunking with transformers](https://arxiv.org/abs/2304.13705)) in the [act branch](https://github.com/CleanDiffuserTeam/CleanDiffuser/tree/act).
-- [**2024-06-24**] 🥰 We have added Consistency Models into CleanDifuser. With one model, you can do both Consistency Distillation and Consistency Training! Check out an example in `tutorials/sp_consistency_policy.py` ! (Note: Our consistency training implementation refers to the improved version, see https://arxiv.org/abs/2310.14189.)
-- [**2024-06-17**] 🔥 We released arxiv version of [**CleanDiffuser: An Easy-to-use Modularized Library for Diffusion Models in Decision Making**](https://arxiv.org/abs/2406.09509). 
 
 <!-- GETTING STARTED -->
 ## 🛠️ Getting Started
@@ -141,47 +123,6 @@ python tutorials/sp_consistency_policy.py
 
 If you wish to reproduce the results of the paper perfectly, we recommend using the full implementation in `pipelines`.
 
-<!-- USAGE EXAMPLES -->
-## 💻 Pipelines
-
-The `cleandiffuser` folder contains the core components of the CleanDiffuser codebase, including `Diffusion Models`, `Network Architectures`, and `Guided Sampling`. It also provides unified `Env and Dataset Interfaces`.
-
-In CleanDiffuser, we can combine independent modules to algorithms pipelines like building blocks. In the `pipelines` folder, we provide all the algorithms currently implemented in CleanDiffuser. By linking with the Hydra configurations in the `configs` folder, you can reproduce the results presented in the papers:
-
-You can simply run each algorithm with the default environment and configuration without any additional setup, for example:
-
-```bash
-# DiffusionPolicy with Chi_UNet in lift-ph
-python pipelines/dp_pusht.py
-# Diffuser in halfcheetah-medium-expert-v2
-python pipelines/diffuser_d4rl_mujoco.py
-```
-
-Thanks to Hydra, CleanDiffuser also supports flexible running of algorithms through CLI or directly modifying the corresponding configuration files. We provide some examples:
-
-```bash
-# Load PushT config
-python pipelines/dp_pusht.py --config-path=../configs/dp/pusht/dit --config-name=pusht
-# Load PushT config and overwrite some hyperparameters
-python pipelines/dp_pusht.py --config-path=../configs/dp/pusht/dit --config-name=pusht dataset_path=path/to/dataset seed=42 device=cuda:0
-# Train Diffuser in hopper-medium-v2 task
-python pipelines/diffuser_d4rl_mujoco.py task=hopper-medium-v2 
-```
-
-In CleanDiffuser, we provide a mode option to switch between **training** `(mode=train)` or **inference** `(mode=inference)` of the model:
-
-```bash
-# Imitation learning environment
-python pipelines/dp_pusht.py mode=inference model_path=path/to/checkpoint
-# Reinforcement learning environment
-python pipelines/diffuser_d4rl_mujoco.py mode=inference ckpt=latest
-```
-
-<!-- ## 💫 Feature -->
-
-
-
-<!-- Implemented Components -->
 ## 🎁 Implemented Components
 
 
