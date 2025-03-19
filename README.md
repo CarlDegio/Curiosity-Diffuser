@@ -14,13 +14,11 @@
     <br>
 <p> -->
 
-# Curiosity-Diffuser: Curiosity Guide Diffusion Models for Reliability
+# 🐜 Curiosity-Diffuser: Curiosity Guide Diffusion Models for Reliability
 
 <p align="center">
 ·
 <a href="https://arxiv.org/abs/2406.09509">ArXiv</a>
-·
-<a href="https://cleandiffuserteam.github.io/CleanDiffuserDocs/">Documentation</a>
 ·
 </p>
 
@@ -66,36 +64,17 @@ $ cd <PATH_TO_D4RL_INSTALL_DIR>
 $ git clone https://github.com/Farama-Foundation/D4RL.git
 $ cd D4RL
 $ pip install -e .
-# Install Robomimic from source (recommended)
-$ cd <PATH_TO_ROBOMIMIC_INSTALL_DIR>
-$ git clone https://github.com/ARISE-Initiative/robomimic.git
-$ cd robomimic
-$ pip install -e .
-$ cd <PATH_TO_ROBOSUITE_INSTALL_DIR>
-$ git clone https://github.com/ARISE-Initiative/robosuite.git
-$ cd robosuite
-$ pip install -e .
 ```
-
-> **Note:** The latest version of dependencies running the `robomimic image` still has compatibility issues, and we are actively working on a fix. The temporary solution is to downgrade the `gym` version to `0.21.0`: pip install setuptools==65.5.0 pip==21, pip install gym==0.21.0
 
 Try it now!   
 ```bash
-# Tutorial
-$ python tutorials/1_a_minimal_DBC_implementation.py
 # Reinforcement Learning
 $ python pipelines/diffuser_d4rl_mujoco.py
-# Imitation Learning (need to download the dataset, see below)
-$ python pipelines/dp_pusht.py
+
 ```
-If you need to reproduce Imitation Learning environments (`pusht`, `kitchen`, `robomimic`), you need to download the datasets additionally. We recommend downloading the corresponding compressed files from [Datasets](https://diffusion-policy.cs.columbia.edu/data/training/). We provide the default dataset path as `dev/`:
-```bash
-dev/
-.
-├── kitchen
-├── pusht
-├── robomimic
-```
+
+KEY POINT: the coefficient of rnd need to be set in `cleandiffuser/classifier/rnd_classifier.py`. In AntMaze Env, the coefficient is set to 10~100. 
+In halfcheetah, the coefficient is set to 1e4~1e5. In hopper and walker, the coefficient is set to 1e3~1e4.
 
 <!-- TUTORIALS -->
 ## 🍷 Tutorials
@@ -123,108 +102,19 @@ python tutorials/sp_consistency_policy.py
 
 If you wish to reproduce the results of the paper perfectly, we recommend using the full implementation in `pipelines`.
 
-## 🎁 Implemented Components
 
 
-| **Category**                | **Items**                | **Paper**                                                                                                                        |
-|-----------------------------|--------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| **SDE/ODE with Solvers**    |                          |                                                                                                                                  |
-| *Diffusion SDE*             | DDPM                     | ✅[Denoising Diffusion Probabilistic Models](https://arxiv.org/abs/2006.11239)                                                    |
-|                             | DDIM                     | ✅[Denoising Diffusion Implicit Models](https://arxiv.org/abs/2010.02502)                                                         |
-|                             | DPM-Solver               | ✅[DPM-Solver: A Fast ODE Solver for Diffusion Probabilistic Model Sampling in Around 10 Steps](https://arxiv.org/abs/2206.00927) |
-|                             | DPM-Solver++             | ✅[DPM-Solver++: Fast Solver for Guided Sampling of Diffusion Probabilistic Models](https://arxiv.org/abs/2211.01095)             |
-| *EDM*                       | Eular                    | ✅[Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364)                           |
-|                             | 2nd Order Heun           |                                                                                                                                  |
-| *Recitified Flow*           | Euler                    | ✅[Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003)          |
-| *Consistency Models*        |                          | ✅[Consistency Models](https://arxiv.org/abs/2303.01469)                                                                          |
-|                             |                          |                                                                                                                                  |
-| **Network Architectures**   |                          |                                                                                                                                  |
-|                             | Pearce_MLP               | ✅[Imitating Human Behaviour with Diffusion Models](https://arxiv.org/abs/2301.10677)                                             |                                |
-|                             | Pearce_Transformer       |                                                                                                                                  |
-|                             | Chi_UNet1d               | ✅[Diffusion Policy: Visuomotor Policy Learning via Action Diffusion](https://arxiv.org/abs/2303.04137)                           |                                |
-|                             | Chi_Transformer          |                                                                                                                                  |
-|                             | LNResnet (IDQL_MLP)      | ✅[IDQL: Implicit Q-Learning as an Actor-Critic Method with Diffusion Policies](https://arxiv.org/abs/2304.10573)                 |                                
-|                             | DQL_MLP                  | ✅[Diffusion Policies as an Expressive Policy Class for Offline Reinforcement Learning](https://arxiv.org/abs/2208.06193)         |
-|                             | Janner_UNet1d            | ✅[Planning with Diffusion for Flexible Behavior Synthesis](https://arxiv.org/abs/2205.09991)                                     |                       
-|                             | DiT1d                    | ✅[AlignDiff: Aligning Diverse Human Preferences via Behavior-Customisable Diffusion Model](https://arxiv.org/abs/2310.02054)     |          
-|                             | SfBC_UNet                | ✅[Offline Reinforcement Learning via High-Fidelity Generative Behavior Modeling](https://arxiv.org/abs/2209.14548)               |      
-|                             |                          |                                                                                                                                  |
-| **Guided Sampling Methods** |                          |                                                                                                                                  |
-|                             | Classifier Guidance      | ✅[Diffusion Models Beat GANs on Image Synthesis](https://arxiv.org/abs/2105.05233)                                               |                                 
-|                             | Classifier-free Guidance | ✅[Classifier-Free Diffusion Guidance](https://arxiv.org/abs/2207.12598)                                                          |                                                                 
-|                             |                          |                                                                                                                                  |
-| **Pipelines**               |                          |                                                                                                                                  |
-| *Planners*                  | Diffuser                 | ✅[Planning with Diffusion for Flexible Behavior Synthesis](https://arxiv.org/abs/2205.09991)                                     |
-|                             | Decision Diffuser        | ✅[Is Conditional Generative Modeling all you need for Decision-Making?](https://arxiv.org/abs/2211.15657)                        |
-|                             | AdaptDiffuser            | ✅[AdaptDiffuser: Diffusion Models as Adaptive Self-evolving Planners](https://arxiv.org/abs/2302.01877)                          |
-|                             | DiffuserLite (*New!*)🔥  | ✅[DiffuserLite: Towards Real-time Diffusion Planning](https://arxiv.org/abs/2401.15443)                                          |
-|                             | Diffusion Veteran (*New!*)🔥  | ✅[What Makes a Good Diffusion Planner for Decision Making?](https://openreview.net/forum?id=7BQkXXM8Fy)                                          |
-| *Policies*                  | DQL                      | ✅[Diffusion Policies as an Expressive Policy Class for Offline Reinforcement Learning](https://arxiv.org/abs/2208.06193)         | 
-|                             | EDP                      | ✅[Efficient Diffusion Policies for Offline Reinforcement Learning](https://arxiv.org/abs/2305.20081)                             | 
-|                             | IDQL                     | ✅[IDQL: Implicit Q-Learning as an Actor-Critic Method with Diffusion Policies](https://arxiv.org/abs/2304.10573)                 |
-|                             | SfBC (*New!*)🔥          | ✅[Offline Reinforcement Learning via High-Fidelity Generative Behavior Modeling](https://arxiv.org/abs/2209.14548)               |
-|                             | QGPO (*New!*)🔥          | ✅[Contrastive energy prediction for exact energy-guided diffusion sampling in offline reinforcement learning](https://arxiv.org/abs/2304.12824)|
-|                             | Diffusion Policy         | ✅[Diffusion Policy: Visuomotor Policy Learning via Action Diffusion](https://arxiv.org/abs/2303.04137)                           |                                
-|                             | DiffusionBC              | ✅[Imitating Human Behaviour with Diffusion Models](https://arxiv.org/abs/2301.10677)                                             |                                
-| *Data Synthesizers*         | SynthER                  | ✅[Synthetic Experience Replay](https://arxiv.org/abs/2303.06614)                                                                 |                                
-|                             |                          |                                                                                                                                  |
 
-
-<!-- UNITTEST -->
-## ✅ Unit Tests
-
-All unit tests in `Cleandiffuser` can be run using pytest runner:
-```bash
-pytest tests/
-```
-To run a single test file:  
-```bash
-python3 -m pytest -v tests/test_dit.py 
-```  
-> **Note:** Testing the datasets module requires downloading the dataset to a specified location ahead of time.
-
-<!-- CONTRIBUTING -->
-## 🙏 Contributing
-
-Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
-If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
-Don't forget to give the project a star! Thanks again!
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-<!-- LICENSE -->
-## 🏷️ License
-
-Distributed under the Apache License 2.0. See `LICENSE.txt` for more information.
-
-<!-- ACKNOWLEDGEMENT -->
-## 💓 Acknowledgement
-
-- [huggingface diffusers](https://github.com/huggingface/diffusers)  
-- [diffuser](https://github.com/jannerm/diffuser)  
-- [diffusion policy](https://github.com/real-stanford/diffusion_policy)  
-- [robomimic](https://github.com/ARISE-Initiative/robomimic)
 
 <!-- CONTACT -->
 ## ✉️ Contact
 
-For any questions, please feel free to email `zibindong@outlook.com` and `yuanyf@tju.edu.cn`.
+For any questions, please feel free to email `liuzihao@mail.nwpu.edu.cn`.
 
 <!-- CITATION -->
 ## 📝 Citation
 
 If you find our work useful, please consider citing:
 ```
-@article{cleandiffuser,
-  author = {Zibin Dong and Yifu Yuan and Jianye Hao and Fei Ni and Yi Ma and Pengyi Li and Yan Zheng},
-  title = {CleanDiffuser: An Easy-to-use Modularized Library for Diffusion Models in Decision Making},
-  journal = {arXiv preprint arXiv:2406.09509},
-  year = {2024},
-  url = {https://arxiv.org/abs/2406.09509},
-}
+xxx
 ```
