@@ -7,6 +7,8 @@ from cleandiffuser.dataset.base_dataset import BaseDataset
 from cleandiffuser.utils import GaussianNormalizer, dict_apply
 
 
+
+
 class D4RLAntmazeDataset(BaseDataset):
     """ **D4RL-Antmaze Sequential Dataset**
 
@@ -163,6 +165,130 @@ class D4RLAntmazeDataset(BaseDataset):
 
         return torch_data
 
+
+class D4RLAntmazeDataset_minari(BaseDataset):
+    """ **D4RL-Antmaze Sequential Dataset**
+
+        torch.utils.data.Dataset wrapper for D4RL-Antmaze dataset.
+        Chunk the dataset into sequences of length `horizon` with obs-repeat/act-zero/reward-zero padding.
+        Use GaussianNormalizer to normalize the observations as default.
+        Each batch contains
+        - batch["obs"]["state"], observations of shape (batch_size, horizon, o_dim)
+        - batch["act"], actions of shape (batch_size, horizon, a_dim)
+        - batch["rew"], rewards of shape (batch_size, horizon, 1)
+        - batch["val"], Monte Carlo return of shape (batch_size, 1)
+
+        Args:
+            dataset: Dict[str, np.ndarray],
+                D4RL-Antmaze dataset. Obtained by calling `env.get_dataset()`.
+            horizon: int,
+                Length of each sequence. Default is 1.
+            max_path_length: int,
+                Maximum length of the episodes. Default is 1001.
+            noreaching_penalty: float,
+                Penalty for not reaching the goal. Default is -100.
+            discount: float,
+                Discount factor. Default is 0.99.
+
+        Examples:
+            >>> env = gym.make("antmaze-medium-play-v2")
+            >>> dataset = D4RLAntmazeDataset(env.get_dataset(), horizon=32)
+            >>> dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+            >>> batch = next(iter(dataloader))
+            >>> obs = batch["obs"]["state"]  # (32, 32, 29)
+            >>> act = batch["act"]           # (32, 32, 8)
+            >>> rew = batch["rew"]           # (32, 32, 1)
+            >>> val = batch["val"]           # (32, 1)
+
+            >>> normalizer = dataset.get_normalizer()
+            >>> obs = env.reset()[None, :]
+            >>> normed_obs = normalizer.normalize(obs)
+            >>> unnormed_obs = normalizer.unnormalize(normed_obs)
+        """
+    def __init__(
+            self,
+            dataset: Dict[str, np.ndarray],
+            horizon: int = 1,
+            max_path_length: int = 1000,
+            noreaching_penalty: float = -100.,
+            discount: float = 0.99,
+            succ_only: bool = False,
+    ):
+        super().__init__()
+
+        obs_list = []
+        act_list = []
+        rew_list = []
+        term_list = []  
+        timeout_list = []  
+        
+        for episode in dataset:
+            obs_reconstructed = np.concatenate([episode.observations['achieved_goal'], episode.observations['observation'], episode.observations['desired_goal']], axis=-1)
+            obs_list.append(obs_reconstructed[:-1])
+            act_list.append(episode.actions)
+            rew_list.append(episode.rewards)
+            term_list.append(episode.terminations)
+            timeout_list.append(episode.terminations)
+            
+        observations = np.stack(obs_list).astype(np.float32)
+        actions = np.stack(act_list).astype(np.float32)
+        rewards = np.stack(rew_list).astype(np.float32)
+        rewards = rewards-0.5
+        # terminals = np.stack(term_list)
+        # timeouts = np.stack(timeout_list)
+        
+            
+        # rewards -= 1  # -1 for each step and 0 for reaching the goal
+        # dones = np.logical_or(timeouts, terminals)
+        self.normalizers = {
+            "state": GaussianNormalizer(observations)}
+        normed_observations = self.normalizers["state"].normalize(observations)
+
+        self.horizon = horizon
+        self.o_dim, self.a_dim = observations.shape[-1], actions.shape[-1]
+
+        self.indices = []
+        self.seq_obs, self.seq_act, self.seq_rew = normed_observations, actions, rewards
+
+        for path_idx in range(observations.shape[0]):
+            if rewards[path_idx][-1]<-0.45:
+                if succ_only:
+                    continue
+                else:
+                    rewards[path_idx][-1]=noreaching_penalty
+            else:
+                rewards[path_idx][-1]=-noreaching_penalty
+            path_length = observations[path_idx].shape[0] #1000
+            max_start = min(path_length - 1, max_path_length - horizon)
+            self.indices += [(path_idx, start, start + horizon) for start in range(max_start + 1)]
+
+
+        self.seq_val = np.copy(self.seq_rew)
+        for i in range(max_path_length - 1):
+            self.seq_val[:, - 2 - i] = self.seq_rew[:, -2 - i] + discount * self.seq_val[:, -1 - i]
+        # self.tml_and_not_timeout = np.array(self.tml_and_not_timeout, dtype=np.int64)
+        print("?")
+
+    def get_normalizer(self):
+        return self.normalizers["state"]
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx: int):
+        path_idx, start, end = self.indices[idx]
+
+        data = {
+            'obs': {
+                'state': self.seq_obs[path_idx, start:end]},
+            'act': self.seq_act[path_idx, start:end],
+            'rew': self.seq_rew[path_idx, start:end],
+            'val': self.seq_val[path_idx, start],
+        }
+
+        torch_data = dict_apply(data, torch.tensor)
+
+        return torch_data
 
 class D4RLAntmazeTDDataset(BaseDataset):
     """ **D4RL-Antmaze Transition Dataset**
