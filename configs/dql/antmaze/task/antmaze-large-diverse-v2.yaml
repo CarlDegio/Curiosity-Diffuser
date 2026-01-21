@@ -1,4 +1,4 @@
-env_name: "antmaze-large-diverse-v2"
+env_name: "D4RL/antmaze/large-diverse-v1"
 
 weight_temperature: 10.
 eta: 3.5

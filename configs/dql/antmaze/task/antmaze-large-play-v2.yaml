@@ -1,4 +1,4 @@
-env_name: "antmaze-large-play-v2"
+env_name: "D4RL/antmaze/large-play-v1"
 
 weight_temperature: 5.
 eta: 4.5
