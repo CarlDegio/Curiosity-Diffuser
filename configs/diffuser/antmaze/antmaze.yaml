@@ -24,8 +24,8 @@ ema_rate: 0.9999
 diffusion_gradient_steps: 1000000
 classifier_gradient_steps: 1000000
 batch_size: 64
-log_interval: 1000
-save_interval: 100000
+log_interval: 10000
+save_interval: 200000
 
 # Inference
 ckpt: latest

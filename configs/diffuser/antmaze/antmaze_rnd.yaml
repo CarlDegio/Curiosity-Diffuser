@@ -1,6 +1,6 @@
 defaults:
   - _self_
-  - task: antmaze-medium-diverse-v2
+  - task: antmaze-medium-play-v2
 
 pipeline_name: diffuser_d4rl_antmaze_rnd
 mode: train
@@ -25,16 +25,17 @@ diffusion_gradient_steps: 5
 classifier_gradient_steps: 300000
 batch_size: 1024
 log_interval: 3000
-save_interval_diffusion: 30000
-save_interval_classifier: 30000
+save_interval_diffusion: 60000
+save_interval_classifier: 60000
 
 # Inference
 ckpt: latest
 num_envs: 50
-num_episodes: 1
+num_episodes: 3
 num_candidates: 64
 temperature: 0.5
 use_ema: True
+curiosity_weight: 10.0
 
 # hydra
 hydra:

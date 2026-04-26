@@ -31,10 +31,11 @@ save_interval_classifier: 30000
 # Inference
 ckpt: latest
 num_envs: 50
-num_episodes: 1
+num_episodes: 3
 num_candidates: 64
 temperature: 0.5
 use_ema: True
+curiosity_weight: 1000.0
 
 # hydra
 hydra:
