@@ -1,7 +1,8 @@
 import os
 
-import d4rl
-import gym
+# import d4rl
+import minari
+import gymnasium as gym
 import hydra
 import numpy as np
 import torch
@@ -10,7 +11,7 @@ from torch.utils.data import DataLoader
 import datetime
 from tqdm import tqdm
 from cleandiffuser.classifier import CumRewClassifier, RNDClassifier
-from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset
+from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset_minari
 from cleandiffuser.dataset.dataset_utils import loop_dataloader
 from cleandiffuser.diffusion import DiscreteDiffusionSDE
 from cleandiffuser.nn_classifier import HalfJannerUNet1d, MLPNNClassifier
@@ -24,16 +25,18 @@ def pipeline(args):
 
     set_seed(args.seed)
 
-    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}/'
+    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
     if os.path.exists(save_path) is False:
         os.makedirs(save_path)
     log_file_path = os.path.join(save_path, 'log.txt')
     open(log_file_path, 'w').close()
 
     # ---------------------- Create Dataset ----------------------
-    env = gym.make(args.task.env_name)
-    dataset = D4RLAntmazeDataset(
-        env.get_dataset(), horizon=args.task.horizon, discount=args.discount,
+    dataset = minari.load_dataset(args.task.env_name, download=True)
+    env = dataset.recover_environment(eval_env=True)
+    env_id = env.spec.id
+    dataset = D4RLAntmazeDataset_minari(
+        dataset, horizon=args.task.horizon, discount=args.discount,
         noreaching_penalty=args.noreaching_penalty,)
     # dataloader = DataLoader(
     #     dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True)
@@ -68,7 +71,7 @@ def pipeline(args):
 
     # --------------- Classifier Guidance --------------------
     # classifier = CumRewClassifier(nn_classifier, device=args.device, optim_params = {"lr": 1e-3})
-    classifier = RNDClassifier(nn_rnd_classifier, nn_classifier_target, nn_reward_classifier, device=args.device)
+    classifier = RNDClassifier(nn_rnd_classifier, nn_classifier_target, nn_reward_classifier, device=args.device, curiosity_weight=args.curiosity_weight)
 
     # ----------------- Masking -------------------
     fix_mask = torch.zeros((args.task.horizon, obs_dim + act_dim))
@@ -84,19 +87,21 @@ def pipeline(args):
 
     # ---------------------- Inference ----------------------
 
-    ckpt_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
+    ckpt_path = f'results/diffuser_d4rl_antmaze/{args.task.env_name}/'
     agent.load(ckpt_path + f"diffusion_ckpt_{args.ckpt}.pt")
-    agent.classifier.load(ckpt_path + f"rnd_classifier/classifier_ckpt_{args.ckpt}.pt")
-    target_net_ckpt=torch.load(ckpt_path + f"rnd_classifier/rnd_classifier_target.pt")
-    nn_classifier_target.load_state_dict(target_net_ckpt)
     reward_net_ckpt=torch.load(ckpt_path + f"classifier_ckpt_{args.ckpt}.pt")
+    
+    ckpt_path = f'results/diffuser_d4rl_antmaze_rnd/{args.task.env_name}/'
+    agent.classifier.load(ckpt_path + f"classifier_ckpt_{args.ckpt}.pt")
+    target_net_ckpt=torch.load(ckpt_path + f"rnd_classifier_target.pt")
+    nn_classifier_target.load_state_dict(target_net_ckpt)
     nn_reward_classifier.load_state_dict(reward_net_ckpt["model_ema"])
     
     nn_classifier_target.eval()
     nn_reward_classifier.eval()
     agent.eval()
 
-    env_eval = gym.vector.make(args.task.env_name, args.num_envs)
+    env_eval = gym.make_vec(env_id, args.num_envs)
     normalizer = dataset.get_normalizer()
     episode_rewards = []
 
@@ -106,9 +111,10 @@ def pipeline(args):
         obs_list = []
         act_list = []
         
-        obs, ep_reward, cum_done, t = env_eval.reset(), 0., 0., 0
+        (obs, info), ep_reward, cum_done, t = env_eval.reset(), 0., 0., 0
+        obs = np.concatenate([obs['achieved_goal'], obs['observation'], obs['desired_goal']], axis=-1)
 
-        while not np.all(cum_done) and t < 1000 + 1:
+        while t < 1000:
             obs_list.append(obs)
             # normalize obs
             obs = torch.tensor(normalizer.normalize(obs), device=args.device, dtype=torch.float32)
@@ -131,12 +137,13 @@ def pipeline(args):
 
             act_list.append(act)
             # step
-            obs, rew, done, info = env_eval.step(act)
+            obs, rew, terminations, truncations, info = env_eval.step(act)
+            obs = np.concatenate([obs['achieved_goal'], obs['observation'], obs['desired_goal']], axis=-1)
 
             t += 1
-            cum_done = done if cum_done is None else np.logical_or(cum_done, done)
+            # cum_done = done if cum_done is None else np.logical_or(cum_done, done)
             ep_reward += rew
-            if t % 40 == 0:
+            if t % 400 == 0:
                 with open(log_file_path, 'a') as f:
                     f.write(f'[t={t}] xy: {obs[:, :2]}\n')
                     f.write(f'[t={t}] cum_rew: {ep_reward},\nlogp: {logp[idx, torch.arange(args.num_envs)]},\ntime: {datetime.datetime.now()}\n')
@@ -145,13 +152,15 @@ def pipeline(args):
                         f'logp: {logp[idx, torch.arange(args.num_envs)]}', f'time: {datetime.datetime.now()}')
 
         # clip the reward to [0, 1] since the max cumulative reward is 1
-        episode_rewards.append(np.clip(ep_reward, 0., 1.))
+        episode_reward_log = np.clip(ep_reward, 0., 1.)
+        episode_reward_log[rew == 0] = 0.0
+        episode_rewards.append(episode_reward_log)
         obs_array = np.stack(obs_list).transpose(1, 0, 2)
         act_array = np.stack(act_list).transpose(1, 0, 2)
         np.save(save_path + f"episode_{i}_obs.npy", obs_array)
         np.save(save_path + f"episode_{i}_act.npy", act_array)
 
-    episode_rewards = [list(map(lambda x: env.get_normalized_score(x), r)) for r in episode_rewards]
+    # episode_rewards = [list(map(lambda x: env.get_normalized_score(x), r)) for r in episode_rewards]
     episode_rewards = np.array(episode_rewards)
     with open(log_file_path, 'a') as f:
         f.write(f'mean: {np.mean(episode_rewards, -1)}, std: {np.std(episode_rewards, -1)}\n')

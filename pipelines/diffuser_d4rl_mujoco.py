@@ -36,7 +36,7 @@ def pipeline(args):
     dataset = D4RLMuJoCoDataset(
         env.get_dataset(), horizon=args.task.horizon, terminal_penalty=args.terminal_penalty, discount=args.discount)
     dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True)
+        dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
     obs_dim, act_dim = dataset.o_dim, dataset.a_dim
 
     # --------------- Network Architecture -----------------
@@ -163,7 +163,7 @@ def pipeline(args):
                 cum_done = done if cum_done is None else np.logical_or(cum_done, done)
                 ep_reward += (rew * (1 - cum_done)) if t < 1000 else rew
                 
-                if t % 20 == 0:
+                if t % 400 == 0:
                     print(f'[t={t}] rew: {np.around((rew * (1 - cum_done)), 2)}, '
                           f'logp: {logp[idx, torch.arange(args.num_envs)]}')
 

@@ -1,4 +1,4 @@
-env_name: "antmaze-medium-diverse-v2"
+env_name: "D4RL/antmaze/medium-diverse-v1"
 dim_mult: [1, 2, 2, 2]
 w_cg: 0.001
 horizon: 64

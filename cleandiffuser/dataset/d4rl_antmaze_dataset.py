@@ -379,6 +379,113 @@ class D4RLAntmazeTDDataset(BaseDataset):
 
         return data
 
+class D4RLAntmazeTDDataset_minari(BaseDataset):
+    """ **D4RL-Antmaze Sequential Dataset**
+
+        torch.utils.data.Dataset wrapper for D4RL-Antmaze dataset.
+        Chunk the dataset into sequences of length `horizon` with obs-repeat/act-zero/reward-zero padding.
+        Use GaussianNormalizer to normalize the observations as default.
+        Each batch contains
+        - batch["obs"]["state"], observations of shape (batch_size, horizon, o_dim)
+        - batch["act"], actions of shape (batch_size, horizon, a_dim)
+        - batch["rew"], rewards of shape (batch_size, horizon, 1)
+        - batch["val"], Monte Carlo return of shape (batch_size, 1)
+
+        Args:
+            dataset: Dict[str, np.ndarray],
+                D4RL-Antmaze dataset. Obtained by calling `env.get_dataset()`.
+            horizon: int,
+                Length of each sequence. Default is 1.
+            max_path_length: int,
+                Maximum length of the episodes. Default is 1001.
+            noreaching_penalty: float,
+                Penalty for not reaching the goal. Default is -100.
+            discount: float,
+                Discount factor. Default is 0.99.
+
+        Examples:
+            >>> env = gym.make("antmaze-medium-play-v2")
+            >>> dataset = D4RLAntmazeDataset(env.get_dataset(), horizon=32)
+            >>> dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+            >>> batch = next(iter(dataloader))
+            >>> obs = batch["obs"]["state"]  # (32, 32, 29)
+            >>> act = batch["act"]           # (32, 32, 8)
+            >>> rew = batch["rew"]           # (32, 32, 1)
+            >>> val = batch["val"]           # (32, 1)
+
+            >>> normalizer = dataset.get_normalizer()
+            >>> obs = env.reset()[None, :]
+            >>> normed_obs = normalizer.normalize(obs)
+            >>> unnormed_obs = normalizer.unnormalize(normed_obs)
+        """
+    def __init__(self, dataset: Dict[str, np.ndarray], reward_tune: str = "iql"):
+        super().__init__()
+
+        obs_list = []
+        next_obs_list = []
+        act_list = []
+        rew_list = []
+        timeout_list = []  
+        
+        for episode in dataset:
+            obs_reconstructed = np.concatenate([episode.observations['achieved_goal'], episode.observations['observation'], episode.observations['desired_goal']], axis=-1)
+            obs_list.append(obs_reconstructed[:-1])
+            next_obs_list.append(obs_reconstructed[1:])
+            act_list.append(episode.actions)
+            rew_list.append(episode.rewards)
+            episode.terminations[-1] = True
+            timeout_list.append(episode.terminations)
+            
+        observations = np.concatenate(obs_list).astype(np.float32)
+        actions = np.concatenate(act_list).astype(np.float32)
+        rewards = np.concatenate(rew_list).astype(np.float32)
+        next_observations = np.concatenate(next_obs_list).astype(np.float32)
+        terminals = np.concatenate(timeout_list).astype(np.float32)
+
+        if reward_tune == "iql":
+            rewards = rewards - 1.
+        elif reward_tune == "cql":
+            rewards = (rewards - 0.5) * 4.
+        elif reward_tune == "antmaze":
+            rewards = (rewards - 0.25) * 2.
+        elif reward_tune == "none":
+            rewards = rewards
+        else:
+            raise ValueError(f"reward_tune: {reward_tune} is not supported.")
+        
+            
+        self.normalizers = {
+            "state": GaussianNormalizer(observations)}
+        normed_observations = self.normalizers["state"].normalize(observations)
+        normed_next_observations = self.normalizers["state"].normalize(next_observations)
+
+        self.obs = torch.tensor(normed_observations)
+        self.act = torch.tensor(actions)
+        self.rew = torch.tensor(rewards)[:, None]
+        self.tml = torch.tensor(terminals)[:, None]
+        self.next_obs = torch.tensor(normed_next_observations)
+
+        self.size = self.obs.shape[0]
+        self.o_dim, self.a_dim = observations.shape[-1], actions.shape[-1]
+
+    def get_normalizer(self):
+        return self.normalizers["state"]
+
+    def __len__(self):
+        return self.size
+
+    def __getitem__(self, idx: int):
+        data = {
+            'obs': {
+                'state': self.obs[idx], },
+            'next_obs': {
+                'state': self.next_obs[idx], },
+            'act': self.act[idx],
+            'rew': self.rew[idx],
+            'tml': self.tml[idx], }
+
+        return data
+
 
 class MultiHorizonD4RLAntmazeDataset(BaseDataset):
     def __init__(

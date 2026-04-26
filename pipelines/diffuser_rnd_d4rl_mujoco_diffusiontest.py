@@ -68,7 +68,7 @@ def pipeline(args):
 
     # --------------- Classifier Guidance --------------------
     # classifier = CumRewClassifier(nn_classifier, device=args.device, optim_params = {"lr": 1e-3})
-    classifier = RNDClassifier(nn_rnd_classifier, nn_classifier_target, nn_reward_classifier, device=args.device)
+    classifier = RNDClassifier(nn_rnd_classifier, nn_classifier_target, nn_reward_classifier, device=args.device, curiosity_weight=args.curiosity_weight)
 
     # ----------------- Masking -------------------
     fix_mask = torch.zeros((args.task.horizon, obs_dim + act_dim))
@@ -136,7 +136,7 @@ def pipeline(args):
             t += 1
             cum_done = done if cum_done is None else np.logical_or(cum_done, done)
             ep_reward += (rew * (1 - cum_done)) if t < 1000 else rew
-            if t % 40 == 0:
+            if t % 400 == 0:
                 with open(log_file_path, 'a') as f:
                     f.write(f'[t={t}] rew: {np.around((rew * (1 - cum_done)), 2)}, \nlogp: {logp[idx, torch.arange(args.num_envs)]}, \ntime: {datetime.datetime.now()}\n')
                 print(f'[t={t}] rew: {np.around((rew * (1 - cum_done)), 2)}, '

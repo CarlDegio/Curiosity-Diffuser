@@ -1,4 +1,5 @@
-env_name: "antmaze-medium-play-v2"
+env_name: "D4RL/antmaze/medium-play-v1"
+#env_name: "antmaze-medium-play-v2"
 dim_mult: [1, 2, 2, 2]
 w_cg: 0.001
 horizon: 64

@@ -1,21 +1,24 @@
 import os
 
-import d4rl
-import gym
+# import d4rl
+import gymnasium as gym
+# import gym
 import hydra
 import numpy as np
 import torch
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader
-
+import datetime
+from tqdm import tqdm
 from cleandiffuser.classifier import CumRewClassifier
-from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset
+from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset_minari
 from cleandiffuser.dataset.dataset_utils import loop_dataloader
 from cleandiffuser.diffusion import DiscreteDiffusionSDE
 from cleandiffuser.nn_classifier import HalfJannerUNet1d
 from cleandiffuser.nn_diffusion import JannerUNet1d
 from cleandiffuser.utils import report_parameters
 from utils import set_seed
+import minari
 
 
 @hydra.main(config_path="../configs/adaptdiffuser/antmaze", config_name="antmaze", version_base=None)
@@ -26,15 +29,22 @@ def pipeline(args):
     save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
     if os.path.exists(save_path) is False:
         os.makedirs(save_path)
+    log_file_path = os.path.join(save_path, 'log.txt')
+    open(log_file_path, 'w').close()
 
     # ---------------------- Create Dataset ----------------------
-    env = gym.make(args.task.env_name)
-    dataset = D4RLAntmazeDataset(
-        env.get_dataset(), horizon=args.task.horizon, discount=args.discount,
+    dataset = minari.load_dataset(args.task.env_name, download=True)
+    env = dataset.recover_environment(eval_env=True)
+    env_id = env.spec.id
+    # env = gym.make(args.task.env_name)
+    # dataset = env.get_dataset()
+    dataset = D4RLAntmazeDataset_minari(
+        dataset, horizon=args.task.horizon, discount=args.discount,
         noreaching_penalty=args.noreaching_penalty,)
     dataloader = DataLoader(
         dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True)
     obs_dim, act_dim = dataset.o_dim, dataset.a_dim
+    print("dataset size:", len(dataset), ", batch size:", args.batch_size, ", obs_dim:", obs_dim, ", act_dim:", act_dim)
 
     # --------------- Network Architecture -----------------
     nn_diffusion = JannerUNet1d(
@@ -77,7 +87,11 @@ def pipeline(args):
         n_gradient_step = 0
         log = {"avg_loss_diffusion": 0., "avg_loss_classifier": 0.}
 
-        for batch in loop_dataloader(dataloader):
+        pbar = tqdm(loop_dataloader(dataloader), 
+                             total=args.diffusion_gradient_steps,
+                             desc="Training Diffusion")
+        
+        for batch in pbar:
 
             obs = batch["obs"]["state"].to(args.device)
             act = batch["act"].to(args.device)
@@ -97,14 +111,16 @@ def pipeline(args):
                 log["gradient_steps"] = n_gradient_step + 1
                 log["avg_loss_diffusion"] /= args.log_interval
                 log["avg_loss_classifier"] /= args.log_interval
-                print(log)
+                print(f'{datetime.datetime.now()}, {log}')
+                with open(log_file_path, 'a') as f:
+                    f.write(f'{datetime.datetime.now()}, {log}\n')
                 log = {"avg_loss_diffusion": 0., "avg_loss_classifier": 0.}
 
             # ----------- Saving ------------
             if (n_gradient_step + 1) % args.save_interval == 0:
                 agent.save(save_path + f"diffusion_ckpt_{n_gradient_step + 1}.pt")
-                agent.classifier.save(save_path + f"classifier_ckpt_{n_gradient_step + 1}.pt")
                 agent.save(save_path + f"diffusion_ckpt_latest.pt")
+                agent.classifier.save(save_path + f"classifier_ckpt_{n_gradient_step + 1}.pt")
                 agent.classifier.save(save_path + f"classifier_ckpt_latest.pt")
 
             n_gradient_step += 1
@@ -158,12 +174,12 @@ def pipeline(args):
         while n_gradient_step < 200_000:
             x = traj_buffer[torch.randint(0, 50000, (32,))]
             log["avg_loss_diffusion"] += agent.update(x)['loss']
-            if (n_gradient_step + 1) % 1000 == 0:
+            if (n_gradient_step + 1) % 10000 == 0:
                 log["gradient_steps"] = n_gradient_step + 1
-                log["avg_loss_diffusion"] /= 1000
+                log["avg_loss_diffusion"] /= 10000
                 print(log)
                 log = {"avg_loss_diffusion": 0., "gradient_steps": 0}
-            if (n_gradient_step + 1) % 5_000 == 0:
+            if (n_gradient_step + 1) % 100000 == 0:
                 agent.save(save_path + f"finetuned_diffusion_ckpt_{n_gradient_step + 1}.pt")
                 agent.save(save_path + f"finetuned_diffusion_ckpt_latest.pt")
             n_gradient_step += 1
@@ -171,23 +187,25 @@ def pipeline(args):
     # ---------------------- Inference ----------------------
     elif args.mode == "inference":
 
-        agent.load(save_path + f"diffusion_ckpt_{args.ckpt}.pt")
+        save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
+        agent.load(save_path + f"finetuned_diffusion_ckpt_{args.ckpt}.pt")
         agent.classifier.load(save_path + f"classifier_ckpt_{args.ckpt}.pt")
 
         agent.eval()
 
-        env_eval = gym.vector.make(args.task.env_name, args.num_envs)
+        # env_eval = gym.vector.make(args.task.env_name, args.num_envs)
+        env_eval = gym.make_vec(env_id, args.num_envs)
         normalizer = dataset.get_normalizer()
         episode_rewards = []
 
         prior = torch.zeros((args.num_envs, args.task.horizon, obs_dim + act_dim), device=args.device)
         for i in range(args.num_episodes):
 
-            obs, ep_reward, cum_done, t = env_eval.reset(), 0., 0., 0
-
-            while not np.all(cum_done) and t < 1000 + 1:
+            (obs, info), ep_reward, cum_done, t = env_eval.reset(), 0., 0., 0
+            obs = np.concatenate([obs['achieved_goal'], obs['observation'], obs['desired_goal']], axis=-1)
+            while t < 1000:
                 # normalize obs
-                obs = torch.tensor(normalizer.normalize(obs), device=args.device)
+                obs = torch.tensor(normalizer.normalize(obs), device=args.device, dtype=torch.float32)
 
                 # sample trajectories
                 prior[:, 0, :obs_dim] = obs
@@ -206,19 +224,22 @@ def pipeline(args):
                 act = act.clip(-1., 1.).cpu().numpy()
 
                 # step
-                obs, rew, done, info = env_eval.step(act)
-
+                obs, rew, terminations, truncations, info = env_eval.step(act)
+                obs = np.concatenate([obs['achieved_goal'], obs['observation'], obs['desired_goal']], axis=-1)
                 t += 1
-                cum_done = done if cum_done is None else np.logical_or(cum_done, done)
+                # cum_done = done if cum_done is None else np.logical_or(cum_done, done)
                 ep_reward += rew
-                print(f'[t={t}] xy: {obs[:, :2]}')
-                print(f'[t={t}] cum_rew: {ep_reward}, '
-                      f'logp: {logp[idx, torch.arange(args.num_envs)]}')
+                if t % 400 == 0: 
+                    print(f'[t={t}] xy: {obs[:, :2]}')
+                    print(f'[t={t}] cum_rew: {ep_reward}, '
+                          f'logp: {logp[idx, torch.arange(args.num_envs)]}', f'time: {datetime.datetime.now()}')
 
             # clip the reward to [0, 1] since the max cumulative reward is 1
-            episode_rewards.append(np.clip(ep_reward, 0., 1.))
+            episode_reward_log = np.clip(ep_reward, 0., 1.)
+            episode_reward_log[rew == 0] = 0.0
+            episode_rewards.append(episode_reward_log)
 
-        episode_rewards = [list(map(lambda x: env.get_normalized_score(x), r)) for r in episode_rewards]
+        # episode_rewards = [list(map(lambda x: env.get_normalized_score(x), r)) for r in episode_rewards]
         episode_rewards = np.array(episode_rewards)
         print(np.mean(episode_rewards, -1), np.std(episode_rewards, -1))
 

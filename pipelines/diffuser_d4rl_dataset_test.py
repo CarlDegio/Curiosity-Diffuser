@@ -1,7 +1,7 @@
 import os
 
-import minari
-import gymnasium as gym
+import d4rl
+import gym
 import hydra
 import numpy as np
 import torch
@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 import datetime
 from tqdm import tqdm
 from cleandiffuser.classifier import CumRewClassifier, RNDClassifier
-from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset, D4RLAntmazeDataset_minari
+from cleandiffuser.dataset.d4rl_antmaze_dataset import D4RLAntmazeDataset
 from cleandiffuser.dataset.dataset_utils import loop_dataloader
 from cleandiffuser.diffusion import DiscreteDiffusionSDE
 from cleandiffuser.nn_classifier import HalfJannerUNet1d, MLPNNClassifier
@@ -24,19 +24,19 @@ def pipeline(args):
 
     set_seed(args.seed)
 
-    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/'
+    save_path = f'results/{args.pipeline_name}/{args.task.env_name}/{datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")}/'
     if os.path.exists(save_path) is False:
         os.makedirs(save_path)
     log_file_path = os.path.join(save_path, 'log.txt')
     open(log_file_path, 'w').close()
 
     # ---------------------- Create Dataset ----------------------
-    dataset = minari.load_dataset(args.task.env_name, download=True)
-    dataset = D4RLAntmazeDataset_minari(
-        dataset, horizon=args.task.horizon, discount=args.discount,
-        noreaching_penalty=args.noreaching_penalty,succ_only=True)
+    env = gym.make(args.task.env_name)
+    dataset = D4RLAntmazeDataset(
+        env.get_dataset(), horizon=args.task.horizon, discount=args.discount,
+        noreaching_penalty=args.noreaching_penalty,)
     dataloader = DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=True, num_workers=8, pin_memory=True, drop_last=True)
+        dataset, batch_size=args.batch_size, shuffle=True, num_workers=4, pin_memory=True, drop_last=True)
     obs_dim, act_dim = dataset.o_dim, dataset.a_dim
     print("dataset size:", len(dataset), ", batch size:", args.batch_size, ", obs_dim:", obs_dim, ", act_dim:", act_dim)
 

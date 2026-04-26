@@ -1,11 +1,11 @@
 import hydra
-import d4rl
-import gym
+import minari
+import gymnasium as gym
 from utils import set_seed
 import matplotlib.pyplot as plt
 import numpy as np  # Make sure to import numpy
 from matplotlib.collections import LineCollection
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeansd
 import time
 
 def calc_k_sim():
@@ -130,38 +130,52 @@ def calc_k_sim():
 def draw_ratio():
     plt.rc('font', family='Times New Roman')
     # Success rates for different RND coefficients
-    rnd_coefficients = [0.1, 1, 5, 10, 20, 50, 100, 200, 1000, 10000]  # Adjusted to avoid log(0)
-    success_rates = [10/50, 12/50, 14/50, 18/50, 13/50, 15/50, 18/50, 17/50, 19/50, 4/50]  # Average success rates from the log
+    rnd_coefficients = [0.0, 100, 1000, 10000, 100000, 1000000, 10000000]  # Adjusted to avoid log(0)
+    success_rates1 = [0.046666, 0.02, 0.30667, 0.36, 0.42, 0.586667, 0.1]  # Average success rates from the log
+    success_rates2 = [0.026666, 0.04, 0.18, 0.17333, 0.24, 0.22, 0.0]  
+    success_rates3 = [0.0, 0.046666, 0.19333, 0.206667, 0.206667, 0.34, 0.04]
+    success_rates4 = [0.0133333, 0.06, 0.153333, 0.173333, 0.2, 0.42, 0.0]
 
-    plt.plot(rnd_coefficients, success_rates, marker='o', label='Success Rate')
-    plt.axhline(y=success_rates[0], color='r', linestyle='--', label='λ=0 Success Rate')
-    plt.xlabel('RND Coefficient (λ)', fontsize=14)
+    plt.plot(rnd_coefficients, success_rates1, marker='o', label='Medium Play')
+    plt.plot(rnd_coefficients, success_rates2, marker='o', label='Medium Diverse')
+    plt.plot(rnd_coefficients, success_rates3, marker='o', label='Large Play')
+    plt.plot(rnd_coefficients, success_rates4, marker='o', label='Large Diverse')
+    # plt.axhline(y=success_rates[0], color='r', linestyle='--', label='λ=0 Success Rate')
+    plt.xlabel('Curiosity Guidance Weight (λ)', fontsize=14)
     plt.ylabel('Success Rate', fontsize=14)
-    plt.ylim(0, 0.5)
+    # plt.ylim(0, 0.5)
     plt.xscale('log')  # Set x-axis to logarithmic scale
     # plt.title('Success Rate of AntMaze Medium Play', fontsize=14)
     plt.grid(True)
     plt.legend(fontsize=12)
+    plt.savefig('sensitivity_ratio.png', dpi=300)
     plt.show()
 
 def draw_map_big():
     RESET = R = 'r'  # Reset position.
     GOAL = G = 'g'  
-    HARDEST_MAZE_TEST = [[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-                    [1, R, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-                    [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
-                    [1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-                    [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
-                    [1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1],
-                    [1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1],
-                    [1, 0, 0, 1, 0, 0, 0, 1, 0, G, 0, 1],
-                    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
+    HARDEST_MAZE_TEST = [
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        [1, R, 0, 0, 0, 1, G, 0, 0, 0, 0, 1],
+        [1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1],
+        [1, 0, 0, 0, 0, G, 0, 1, 0, 0, G, 1],
+        [1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1],
+        [1, 0, G, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+        [1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1, 1],
+        [1, 0, 0, 1, G, 0, G, 1, 0, G, 0, 1],
+        [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    ]
     maze_scale = 4.0
     block_size = 3.7
     
     # Get maze dimensions
     height = len(HARDEST_MAZE_TEST)
     width = len(HARDEST_MAZE_TEST[0])
+    
+    x_center = width / 2 * maze_scale
+    y_center = height / 2 * maze_scale
+    
+    
     
     # Create figure and axis for two subplots
     fig, axs = plt.subplots(1, 2, figsize=(12, 6))
@@ -175,8 +189,8 @@ def draw_map_big():
                 cell = HARDEST_MAZE_TEST[i][j]
                 
                 # Calculate cell position relative to the reset position (origin)
-                x = (j - 1) * maze_scale  # Adjusted to center the maze
-                y = (i - 1) * maze_scale  # Adjusted to center the maze
+                x = (j + 0.5) * maze_scale - x_center
+                y = y_center - (i + 0.5) * maze_scale
                 
                 if cell == 1:  # Wall
                     rect = plt.Rectangle((x - maze_scale/2, y - maze_scale/2), maze_scale, maze_scale, 
@@ -186,12 +200,12 @@ def draw_map_big():
                     rect = plt.Rectangle((x - block_size/2, y - block_size/2), block_size, block_size, 
                                         color='lightgray', fill=True)
                     ax.add_patch(rect)
-                    ax.plot(x, y, 'bo', markersize=10, zorder=5)  # Mark reset position with red dot
+                    # ax.plot(start[0], start[1], 'bo', markersize=10, zorder=5)  # Mark reset position with red dot
                 elif cell == G:  # Goal position
                     rect = plt.Rectangle((x - block_size/2, y - block_size/2), block_size, block_size, 
                                         color='lightgray', fill=True)
                     ax.add_patch(rect)
-                    ax.plot(32.23, 24.27, 'go', markersize=10, zorder=5)  # Mark goal position with green dot
+                    # ax.plot(goal[0], goal[1], 'go', markersize=10, zorder=5)  # Mark goal position with green dot
                 else:  # Empty space
                     rect = plt.Rectangle((x - block_size/2, y - block_size/2), block_size, block_size, 
                                         color='lightgray', fill=True)
@@ -199,12 +213,18 @@ def draw_map_big():
 
     
     # Load trajectory data
-    save_path = f'results/diffuser_d4rl_antmaze_rnd/antmaze-large-play-v2/rnd_10/'
+    save_path = f'results/dql_d4rl_antmaze/D4RL/antmaze/large-play-v1/'
     obs_path = save_path + f"episode_{0}_obs.npy"
     act_path = save_path + f"episode_{0}_act.npy"
     obs = np.load(obs_path)
     act = np.load(act_path)
-    path = obs[0,:500:3,:2]
+    path = obs[2,::3,:2]
+    
+    start = obs[2,0,:2]
+    goal = obs[2,0,-2:]
+    
+    axs[0].plot(start[0], start[1], 'bo', markersize=10, zorder=5)  # Mark reset position with red dot
+    axs[0].plot(goal[0], goal[1], 'go', markersize=10, zorder=5)  # Mark goal position with green dot
     
     # Plot trajectory with color gradient from light red to dark red
     points = np.array([path[:, 0], path[:, 1]]).T.reshape(-1, 1, 2)
@@ -218,12 +238,18 @@ def draw_map_big():
     scatter = axs[0].scatter(path[:, 0], path[:, 1], c=np.arange(len(path)), 
                             cmap=cmap, norm=norm, s=30, zorder=3)
     
-    save_path = f'results/diffuser_d4rl_antmaze_rnd/antmaze-large-play-v2/rnd_0/'
+    save_path = f'results/dql_d4rl_antmaze/D4RL/antmaze/large-play-v1/'
     obs_path = save_path + f"episode_{0}_obs.npy"
     act_path = save_path + f"episode_{0}_act.npy"
     obs = np.load(obs_path)
     act = np.load(act_path)
     path = obs[3,::3,:2]
+    
+    start = obs[3,0,:2]
+    goal = obs[3,0,-2:]
+    
+    axs[1].plot(start[0], start[1], 'bo', markersize=10, zorder=5)  # Mark reset position with red dot
+    axs[1].plot(goal[0], goal[1], 'go', markersize=10, zorder=5)  # Mark goal position with green dot
     
     # Plot trajectory with color gradient from light red to dark red
     points = np.array([path[:, 0], path[:, 1]]).T.reshape(-1, 1, 2)
@@ -351,7 +377,7 @@ def draw_map_medium():
     
 
 if __name__ == "__main__":
-    # draw_ratio()
+    draw_ratio()
     # draw_map_medium()
     # calc_k_sim()
-    draw_map_big()
+    # draw_map_big()
