@@ -359,16 +359,17 @@ def report_parameters(model, topk=10):
 
     modules = dict(model.named_modules())
     sorted_keys = sorted(counts, key=lambda x: -counts[x])
-    for i in range(topk):
+    n_shown = min(topk, len(sorted_keys))
+    for i in range(n_shown):
         key = sorted_keys[i]
         count = counts[key]
         module = param_to_module(key)
         print(" " * 8, f"{key:10}: {_to_str(count)} | {modules[module]}")
 
-    remaining_parameters = sum([counts[k] for k in sorted_keys[topk:]])
+    remaining_parameters = sum([counts[k] for k in sorted_keys[n_shown:]])
     print(
         " " * 8,
-        f"... and {len(counts) - topk} others accounting for {_to_str(remaining_parameters)} parameters",
+        f"... and {len(counts) - n_shown} others accounting for {_to_str(remaining_parameters)} parameters",
     )
     return n_parameters
 

@@ -4,10 +4,11 @@ dynamic = ["version"]
 description = "CleanDiffuser: An Easy-to-use Modularized Library for Diffusion Models in Decision Making"
 authors = [{ name = "CleanDiffuserTeam" }]
 readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = "==3.9"
 keywords = ["reinforcement learning", "pytorch", "diffusion models"]
 dependencies = [
     "numpy<1.23.0",
+    "mujoco==3.1.6",
     "einops",
     "zarr>=2.16.1",
     "av>=12.2.0",
@@ -15,7 +16,7 @@ dependencies = [
     "mujoco_py>=2.0",
     "gym>=0.13,<0.24",
     "dm_control>=1.0.3",
-    "cython==3.0.0a10",
+    "cython==0.29.37",
     "numba<0.60.0",
     "matplotlib<=3.7.5",
     "six",
@@ -30,8 +31,12 @@ dependencies = [
     "scikit-image<0.23.0",
     "opencv-python",
     "imagecodecs",
+    "minari[hf]==0.5.3",
+    "gymnasium-robotics",
     "torch>1.0.0,<2.3.0",
-    "torchvision",]
+    "torchvision",
+    "gymnasium==1.1.1",
+]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
