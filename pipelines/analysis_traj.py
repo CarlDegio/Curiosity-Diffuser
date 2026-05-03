@@ -5,7 +5,7 @@ from utils import set_seed
 import matplotlib.pyplot as plt
 import numpy as np  # Make sure to import numpy
 from matplotlib.collections import LineCollection
-# from sklearn.cluster import KMeansd
+from sklearn.cluster import KMeans
 import time
 
 def calc_k_sim():

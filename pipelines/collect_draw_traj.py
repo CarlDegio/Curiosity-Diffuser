@@ -4,6 +4,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import colors
+from matplotlib.lines import Line2D
 
 
 TRAJ_START = 0
@@ -95,7 +96,8 @@ def load_method_data(method, maze, data_id, ckpt):
 def slice_traj(xy, novelty):
     xy_sliced = xy[TRAJ_START:TRAJ_END:STRIDE]
     novelty_sliced = novelty[TRAJ_START:TRAJ_END:STRIDE]
-    return xy_sliced, novelty_sliced
+    step_sliced = np.arange(len(xy))[TRAJ_START:TRAJ_END:STRIDE]
+    return xy_sliced, novelty_sliced, step_sliced
 
 
 def draw_map(ax, maze):
@@ -128,18 +130,21 @@ def draw_map(ax, maze):
 
 
 def mark_start_goal(ax, start, goal):
-    ax.plot(start[0], start[1], "o", color="#1f77b4", markersize=6, zorder=5)
-    ax.plot(goal[0], goal[1], "o", color="#2ca02c", markersize=6, zorder=5)
+    ax.plot(
+        start[0], start[1], marker="^", color="#2ca02c", markeredgecolor="black",
+        markeredgewidth=0.5, markersize=7, linestyle="None", zorder=5)
+    ax.plot(
+        goal[0], goal[1], marker="*", color="#ff7f0e", markeredgecolor="black",
+        markeredgewidth=0.5, markersize=10, linestyle="None", zorder=5)
 
 
-def plot_order_traj(ax, xy, start, goal):
+def plot_order_traj(ax, xy, steps, start, goal, norm):
     if len(xy) == 0:
-        return
-    c = np.arange(len(xy))
-    norm = plt.Normalize(-len(xy) / 3, max(len(xy) * 1.1, 1))
+        return None
     ax.plot(xy[:, 0], xy[:, 1], color="#7f0000", linewidth=0.8, alpha=0.35, zorder=2)
-    ax.scatter(xy[:, 0], xy[:, 1], c=c, cmap=plt.cm.Reds, norm=norm, s=18, zorder=3)
+    scatter = ax.scatter(xy[:, 0], xy[:, 1], c=steps, cmap=plt.cm.Reds, norm=norm, s=18, zorder=3)
     mark_start_goal(ax, start, goal)
+    return scatter
 
 
 def plot_novelty_traj(ax, xy, novelty, start, goal, norm):
@@ -159,36 +164,54 @@ def draw_figure(args):
     sliced = []
     all_novelty = []
     for data in method_data:
-        xy, novelty = slice_traj(data["xy"], data["novelty"])
-        sliced.append((xy, novelty))
+        xy, novelty, steps = slice_traj(data["xy"], data["novelty"])
+        sliced.append((xy, novelty, steps))
         if len(novelty) > 0:
             all_novelty.append(novelty)
 
     if not all_novelty:
         raise ValueError("No novelty values found after trajectory slicing.")
     novelty_values = np.concatenate(all_novelty)
-    novelty_norm = colors.Normalize(vmin=float(np.min(novelty_values)), vmax=float(np.max(novelty_values)))
+    novelty_norm = colors.Normalize(vmin=float(np.min(novelty_values)), vmax=np.percentile(novelty_values, 80))
+    step_norm = colors.Normalize(vmin=0, vmax=1000)
 
-    fig, axs = plt.subplots(2, 3, figsize=(13.5, 8.2), constrained_layout=True)
+    fig, axs = plt.subplots(2, 3, figsize=(13.5, 6.7), constrained_layout=False)
+    fig.subplots_adjust(left=0.04, right=0.90, bottom=0.11, top=0.90, wspace=0.08, hspace=-0.0)
     for row in range(2):
         for col in range(3):
             draw_map(axs[row, col], args.maze)
 
+    order_scatter = None
     novelty_scatter = None
-    for col, (method, data, (xy, novelty)) in enumerate(zip(METHODS, method_data, sliced)):
-        title = f"{method['title']}\nReturn {data['return']:.1f}"
-        axs[0, col].set_title(title, fontsize=12)
-        plot_order_traj(axs[0, col], xy, data["start"], data["goal"])
+    for col, (method, data, (xy, novelty, steps)) in enumerate(zip(METHODS, method_data, sliced)):
+        axs[0, col].set_title(method["title"], fontsize=17)
+        order_scatter = plot_order_traj(axs[0, col], xy, steps, data["start"], data["goal"], step_norm)
         novelty_scatter = plot_novelty_traj(
             axs[1, col], xy, novelty, data["start"], data["goal"], novelty_norm)
 
-    axs[0, 0].set_ylabel("Time order", fontsize=12)
-    axs[1, 0].set_ylabel("RND novelty", fontsize=12)
+    axs[0, 0].set_ylabel("Time order", fontsize=15)
+    axs[1, 0].set_ylabel("RND novelty", fontsize=15)
+    if order_scatter is not None:
+        cbar = fig.colorbar(order_scatter, ax=axs[0, :], shrink=0.8, pad=0.02)
+        cbar.set_label("Timestep", fontsize=14)
+        cbar.set_ticks([0, 250, 500, 750, 1000])
     if novelty_scatter is not None:
-        cbar = fig.colorbar(novelty_scatter, ax=axs[1, :], shrink=0.72, pad=0.02)
-        cbar.set_label("Curiosity-Diffuser RND novelty", fontsize=11)
+        cbar = fig.colorbar(novelty_scatter, ax=axs[1, :], shrink=0.8, pad=0.02)
+        cbar.set_label("Curiosity Value", fontsize=14)
 
-    fig.suptitle(f"AntMaze {args.maze.title()} Play, seed {args.data_id}", fontsize=14)
+    legend_handles = [
+        Line2D(
+            [0], [0], marker="^", color="none", markerfacecolor="#2ca02c",
+            markeredgecolor="black", markeredgewidth=0.5, markersize=9, label="Start"),
+        Line2D(
+            [0], [0], marker="*", color="none", markerfacecolor="#ff7f0e",
+            markeredgecolor="black", markeredgewidth=0.5, markersize=13, label="Goal"),
+    ]
+    fig.legend(
+        handles=legend_handles, loc="lower center", ncol=2, frameon=False,
+        fontsize=14, bbox_to_anchor=(0.4, 0.0))
+
+    fig.suptitle(f"AntMaze {args.maze.title()} Play", fontsize=14)
     output = Path(args.output) if args.output else Path("results") / "trajectory_figures" / f"antmaze_{args.maze}_play_seed_{args.data_id}.png"
     output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output, dpi=args.dpi, bbox_inches="tight")
