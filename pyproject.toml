@@ -36,6 +36,7 @@ dependencies = [
     "torch>1.0.0,<2.3.0",
     "torchvision",
     "gymnasium==1.1.1",
+    "scikit-learn>=1.6.1",
 ]
 
 [tool.setuptools.dynamic]

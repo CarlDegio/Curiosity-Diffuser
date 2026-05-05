@@ -72,6 +72,20 @@ def resolve_ckpt_dir(pipeline_name, env_name):
     return Path("results") / pipeline_name / env_name
 
 
+def antmaze_env_name(group):
+    aliases = {
+        "medium": "medium-play",
+        "large": "large-play",
+        "medium-play": "medium-play",
+        "large-play": "large-play",
+        "medium-diverse": "medium-diverse",
+        "large-diverse": "large-diverse",
+    }
+    if group not in aliases:
+        raise ValueError(f"Unsupported AntMaze group: {group}")
+    return f"D4RL/antmaze/{aliases[group]}-v1"
+
+
 def ckpt_path(ckpt_dir, prefix, ckpt):
     return ckpt_dir / f"{prefix}_ckpt_{ckpt}.pt"
 
@@ -575,7 +589,12 @@ def collect_rediffuser(args):
 def parse_args():
     parser = argparse.ArgumentParser(description="Collect seeded AntMaze test trajectories for diffuser variants.")
     parser.add_argument("--method", choices=["diffuser", "curiosity_diffuser", "rediffuser"], required=True)
-    parser.add_argument("--env-name", default="D4RL/antmaze/medium-play-v1")
+    parser.add_argument(
+        "--group",
+        choices=["medium", "large", "medium-play", "large-play", "medium-diverse", "large-diverse"],
+        default="medium-play",
+        help="AntMaze group. medium/large are aliases for medium-play/large-play.")
+    parser.add_argument("--env-name", default=None, help="Explicit Minari env name. Overrides --group when set.")
     parser.add_argument("--seeds", type=int, default=0, help="First reset seed. Vector envs use seeds, seeds+1, ... by default.")
     parser.add_argument("--n-env", type=int, default=10, help="Number of parallel environments to collect in one run.")
     parser.add_argument("--sample-seed", type=int, default=0)
@@ -612,7 +631,10 @@ def parse_args():
     parser.add_argument("--rnd-hidden-dim", type=int, default=256)
     parser.add_argument("--top-value-size", type=int, default=4)
     parser.add_argument("--uncertainty-scaling", type=float, default=0.2)
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.env_name is None:
+        args.env_name = antmaze_env_name(args.group)
+    return args
 
 
 def main():
